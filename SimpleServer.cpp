@@ -15,46 +15,50 @@ int poissonGenerator(double lambda, mt19937_64& gen) {
 	}
 }
 
-double MultichannelServer::serviceTimeGenerator() {
+milliseconds MultichannelServer::serviceTimeGenerator() {
 	uniform_real_distribution<double> dist(0.0, 1.0);
-	return -log(dist(gen)) / _serviceRate;
+	double result = -log(dist(gen)) / _serviceRate;
+	return duration_cast<milliseconds>(duration<double>(result));
 }
 
-void MultichannelServer::newRequests(int newRequests,double curr_time) {
+void MultichannelServer::newRequests(int newRequests, milliseconds curr_time) {
+	if (newRequests <= 0) return;
+
 	for (int i = 0; i < newRequests; i++) {
 		_totalRequests++;
 		_request_queue.push(curr_time);
-		cout << "Поступил запрос. Время: " << curr_time << "############################" << '\n';
+		cout << "Поступил запрос. Время: " << curr_time.count() << "ms" << " ############################" << '\n';
 	}
 }
 
-void MultichannelServer::addRequestToServer(double curr_time) {
+void MultichannelServer::addRequestToServer(milliseconds curr_time) {
 	for (int i = 0; i < _isServerBusy.size(); i++) {
 		if (!_isServerBusy[i] && !_request_queue.empty()) {
 			_isServerBusy[i] = true;
-			double arrivalTime = _request_queue.front();
+			milliseconds arrivalTime = _request_queue.front();
 			_request_queue.pop();
 
-			double service_time = serviceTimeGenerator();
+			milliseconds service_time = serviceTimeGenerator();
 			_serverWorkingTime[i] = curr_time + service_time;
 
 			_request_service_times[i] = service_time;
 			_request_arrival_times[i] = arrivalTime;
 
-			double wait_time = curr_time - arrivalTime;
-			cout << "=== НАЧАЛО ОБРАБОТКИ ===================================" << endl;
-			cout << "Сервер: " << i << endl;
-			cout << "Время поступления: " << arrivalTime << endl;
-			cout << "Время начала: " << curr_time << endl;
-			cout << "Время ожидания: " << wait_time << " сек" << endl;
-			cout << "Время обработки: " << service_time << " сек" << endl;
-			cout << "Завершится в: " << _serverWorkingTime[i] << endl;
-			cout << "========================================================" << endl;
+			milliseconds wait_time = curr_time - arrivalTime;
+			cout << "=== НАЧАЛО ОБРАБОТКИ ===================================" << '\n';
+			cout << "Сервер: " << i << '\n';
+			cout << "Время поступления: " << arrivalTime.count() << '\n';
+			cout << "Время начала: " << curr_time.count() << '\n';
+			cout << "Время ожидания: " << wait_time.count() << " ms" << '\n';
+			cout << "Время обработки: " << service_time.count() << " ms" << '\n';
+			cout << "Завершится в: " << _serverWorkingTime[i].count() << '\n';
+			cout << "========================================================" << '\n';
+			cout << '\n';
 		}
 	}
 }
 
-void MultichannelServer::deleteRequestFromServer(double curr_time) {
+void MultichannelServer::deleteRequestFromServer(milliseconds curr_time) {
 	for (int i = 0; i < _serverWorkingTime.size(); i++) {
 		if (_isServerBusy[i] && _serverWorkingTime[i] <= curr_time) {
 			_isServerBusy[i] = false;
@@ -65,13 +69,12 @@ void MultichannelServer::deleteRequestFromServer(double curr_time) {
 }
 
 void MultichannelServer::run() {
-	double current_time = 0;
-	double time_step = 1;
-
+	auto current_time = 0ms;
+	auto time_step = 5ms;
 	while (current_time < _workTime) {
 		deleteRequestFromServer(current_time);
 
-		int newRequest = poissonGenerator(_requestRate * time_step, gen);
+		int newRequest = poissonGenerator(_requestRate, gen);
 		newRequests(newRequest, current_time);
 
 		addRequestToServer(current_time);
@@ -89,7 +92,13 @@ void MultichannelServer::run() {
 }
 
 void MultichannelServer::printStats() {
+	cout << '\n';
+	cout << "#############################################" << '\n';
 	cout << "Общее количество запросов: " << _totalRequests << '\n';
 	cout << "Количество обработанных запросов: " << _servedRequests << '\n';
 	cout << "Количество отклоненных запросов: " << _rejectedRequests << '\n';
+	if (_totalRequests > 0) {
+		cout << "Эффективность сервера: " << (double)_servedRequests / _totalRequests << '\n';
+	}
+	cout << "#############################################" << '\n';
 }

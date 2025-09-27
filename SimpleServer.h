@@ -3,28 +3,30 @@
 #include <vector>
 #include <cmath>
 #include <queue>
+#include <chrono>
 #include <numeric>
 #include <random>
 
 using namespace std;
+using namespace std::chrono;
 
 class MultichannelServer {
 private:
 	mt19937_64 gen;
 	double _requestRate;
 	double _serviceRate;
-	double _workTime;
+	milliseconds _workTime;
 
 	//Очередь запросов
-	queue<int> _request_queue;
+	queue<milliseconds> _request_queue;
 
 	//Информация о канале
 	vector<bool> _isServerBusy;
-	vector<double> _serverWorkingTime;
+	vector<milliseconds> _serverWorkingTime;
 
 	//Векторы данных о запросах
-	vector<double> _request_service_times;
-	vector<double> _request_arrival_times;
+	vector<milliseconds> _request_service_times;
+	vector<milliseconds> _request_arrival_times;
 
 	//Stats
 	int _totalRequests = 0;
@@ -33,25 +35,25 @@ private:
 
 public:
 
-	MultichannelServer(int channelAmount,double lambda, double mu, int seed, double workTime) : 
+	MultichannelServer(int channelAmount,double lambda, double mu, int seed, milliseconds duration) :
 		_requestRate(lambda), 
 		_serviceRate(mu),
-		_workTime(workTime), 
+		_workTime(duration), 
 		gen(seed),
-		_serverWorkingTime(channelAmount, 0.0),
+		_serverWorkingTime(channelAmount, 0ms),
 		_isServerBusy(channelAmount,false)
 	{
-		_request_service_times.resize(channelAmount, 0.0);
-		_request_arrival_times.resize(channelAmount, 0.0);
+		_request_service_times.resize(channelAmount, 0ms);
+		_request_arrival_times.resize(channelAmount, 0ms);
 	}
 
-	double serviceTimeGenerator();
+	milliseconds serviceTimeGenerator();
 
-	void addRequestToServer(double curr_time);
+	void addRequestToServer(milliseconds curr_time);
 
-	void deleteRequestFromServer(double curr_time);
+	void deleteRequestFromServer(milliseconds curr_time);
 
-	void newRequests(int newRequests, double curr_time);
+	void newRequests(int newRequests, milliseconds curr_time);
 
 	void run();
 
